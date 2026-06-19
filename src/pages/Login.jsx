@@ -17,11 +17,18 @@ export default function Login() {
         <p className="text-gray-400">Sign in to track your carbon footprint</p>
         <GoogleLogin
           onSuccess={(credentialResponse) => {
+            // Decode the JWT token to get user info
+            const decoded = JSON.parse(atob(credentialResponse.credential.split('.')[1]));
+            
             const userData = {
-              name: 'Eco Warrior',
-              email: 'user@atmos.ai',
-              picture: null,
+              name: decoded.name || 'Eco Warrior',
+              email: decoded.email || 'user@atmos.ai',
+              picture: decoded.picture || null,
+              googleId: decoded.sub,
+              // Add editable display name (initially same as Google name)
+              displayName: decoded.name || 'Eco Warrior'
             };
+            
             setUser(userData);
             localStorage.setItem('user', JSON.stringify(userData));
             navigate('/dashboard');
