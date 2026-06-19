@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { useState, createContext } from 'react'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
@@ -19,20 +19,27 @@ function App() {
   const [notifications, setNotifications] = useState([])
 
   return (
-    <AppContext.Provider value={{ user, setUser, ecoPoints, setEcoPoints, notifications, setNotifications }}>
-      <Layout>
-        <Routes>
-          <Route path="/" element={user ? <Dashboard /> : <Login />} />
-<Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/challenges" element={<Challenges />} />
-          <Route path="/calculator" element={<Calculator />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/chat" element={<Chatbot />} />
-          <Route path="/profile" element={<Profile />} />
-        </Routes>
-      </Layout>
-    </AppContext.Provider>
-  )
+    
+  <AppContext.Provider value={{ user, setUser, ecoPoints, setEcoPoints, notifications, setNotifications }}>
+    <Routes>
+      {/* Public route - Login */}
+      <Route path="/" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+      
+      {/* Protected routes - only accessible when logged in */}
+      <Route element={user ? <Layout /> : <Navigate to="/" />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/challenges" element={<Challenges />} />
+        <Route path="/calculator" element={<Calculator />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/chatbot" element={<Chatbot />} />
+        <Route path="/profile" element={<Profile />} />
+      </Route>
+      
+      {/* Catch all - redirect to login */}
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
+  </AppContext.Provider>
+)
 }
 
 export default App
