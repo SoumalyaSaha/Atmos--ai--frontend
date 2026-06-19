@@ -14,7 +14,7 @@ import {
   LogOut,
   ChevronRight
 } from 'lucide-react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, Outlet } from 'react-router-dom'  // <-- ADDED Outlet
 import { AppContext } from '../App'
 
 const navItems = [
@@ -26,7 +26,7 @@ const navItems = [
   { path: '/profile', icon: User, label: 'Profile' },
 ]
 
-export default function Layout({ children }) {
+export default function Layout() {  // <-- REMOVED { children }
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const location = useLocation()
@@ -215,7 +215,7 @@ export default function Layout({ children }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
-            {children}
+            <Outlet />  {/* <-- CHANGED from {children} */}
           </motion.div>
         </main>
       </div>
