@@ -36,7 +36,7 @@ export default function Challenges() {
     setError(null)
     
     try {
-      const res = await api.get('/api/challenges')
+      const res = await api.get('/challenges')
       if (res.data?.success) {
         setChallenges(res.data.challenges || [])
       } else {
