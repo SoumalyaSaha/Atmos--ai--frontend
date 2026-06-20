@@ -117,7 +117,7 @@ export default function Chatbot() {
       // Build context-aware prompt
       const contextPrompt = buildContextPrompt(userMessage.content)
       
-      const res = await api.post('/api/ai/chat', {
+      const res = await api.post('/ai/chat', {
         message: contextPrompt,
         chatHistory: [...chatHistory, { role: 'user', content: userMessage.content }]
       })
