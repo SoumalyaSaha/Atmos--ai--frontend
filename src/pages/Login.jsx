@@ -17,7 +17,6 @@ export default function Login() {
         <p className="text-gray-400">Sign in to track your carbon footprint</p>
         <GoogleLogin
           onSuccess={(credentialResponse) => {
-            // Decode the JWT token to get user info
             const decoded = JSON.parse(atob(credentialResponse.credential.split('.')[1]));
             
             const userData = {
@@ -25,45 +24,18 @@ export default function Login() {
               email: decoded.email || 'user@atmos.ai',
               picture: decoded.picture || null,
               googleId: decoded.sub,
-              // Add editable display name (initially same as Google name)
               displayName: decoded.name || 'Eco Warrior',
               
-              // ============================================
               // NEW: Age fields for personalized calculations
-              // ============================================
               age: null,
               ageGroup: null,
               
-              // ============================================
-              // NEW: Onboarding tracking flag
-              // ============================================
-              // false = user hasn't completed data setup yet
-              // true = user has either allowed Health Connect or entered manual data
+              // Onboarding tracking
               onboardingComplete: false,
-              
-              // NEW: Track which data source user chose
-              // 'health_connect' | 'manual' | null
               dataSource: null,
+              manualData: null,
               
-              // NEW: Store raw health data (only if permission granted)
-              healthData: {
-                steps: 0,
-                distance: 0, // in meters
-                caloriesBurned: 0,
-                lastSynced: null
-              },
-              
-              // NEW: Store manual entry data (if user denies Health Connect)
-              manualData: {
-                transport: null,      // { primaryMode, vehicleType, kmPerDay }
-                homeEnergy: null,     // { electricityKwh, gasUsage, householdSize }
-                diet: null,           // { dietType, mealsPerDay, foodWaste }
-                shopping: null,       // { monthlySpend, preference }
-                waste: null           // { householdSize, bagsPerWeek }
-              },
-              
-              // NEW: Calculated carbon footprint (all sectors)
-              // Initialized to 0.00 - NO FAKE DATA
+              // Calculated carbon footprint (all sectors)
               carbonFootprint: {
                 mobility: 0.00,
                 homeEnergy: 0.00,
@@ -77,11 +49,6 @@ export default function Login() {
             
             setUser(userData);
             localStorage.setItem('user', JSON.stringify(userData));
-            
-            // ============================================
-            // CHANGED: Redirect to onboarding instead of dashboard
-            // ============================================
-            // User CANNOT access dashboard until onboarding is complete
             navigate('/onboarding');
           }}
           onError={() => console.log('Login Failed')}
