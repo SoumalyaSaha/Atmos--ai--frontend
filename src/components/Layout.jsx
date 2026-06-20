@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react'
+import { useState, useContext, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   LayoutDashboard, 
@@ -13,25 +13,39 @@ import {
   Zap,
   LogOut,
   ChevronRight,
-  Pencil
+  Pencil,
+  Lock
 } from 'lucide-react'
-import { Link, useLocation, Outlet } from 'react-router-dom'
+import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom'
 import { AppContext } from '../App'
 
 const navItems = [
-  { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/challenges', icon: Trophy, label: 'Challenges' },
-  { path: '/calculator', icon: Calculator, label: 'Calculator' },
-  { path: '/leaderboard', icon: Zap, label: 'Leaderboard' },
-  { path: '/chat', icon: MessageCircle, label: 'Atmos AI' },
-  { path: '/profile', icon: User, label: 'Profile' },
+  { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', requiresOnboarding: true },
+  { path: '/challenges', icon: Trophy, label: 'Challenges', requiresOnboarding: true },
+  { path: '/calculator', icon: Calculator, label: 'Calculator', requiresOnboarding: false },
+  { path: '/leaderboard', icon: Zap, label: 'Leaderboard', requiresOnboarding: true },
+  { path: '/chat', icon: MessageCircle, label: 'Atmos AI', requiresOnboarding: false },
+  { path: '/profile', icon: User, label: 'Profile', requiresOnboarding: false },
 ]
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
   const { ecoPoints, user, setUser } = useContext(AppContext)
+
+  // Guard: Check onboarding on mount
+  useEffect(() => {
+    if (!user?.onboardingComplete) {
+      // Only allow access to calculator and chat
+      const currentPath = location.pathname
+      const allowedPaths = ['/calculator', '/chat', '/profile']
+      if (!allowedPaths.includes(currentPath)) {
+        navigate('/calculator')
+      }
+    }
+  }, [user, location, navigate])
 
   // Name editing state
   const [isEditingName, setIsEditingName] = useState(false)
@@ -50,11 +64,22 @@ export default function Layout() {
     setIsEditingName(false)
   }
 
+  const handleLogout = () => {
+    if (setUser) setUser(null)
+    localStorage.removeItem('user')
+    localStorage.removeItem('ecoPoints')
+    navigate('/')
+  }
+
   const notifications = [
     { id: 1, title: 'New Challenge!', message: 'Zero Plastic Week starts tomorrow', time: '2m ago', unread: true },
     { id: 2, title: 'Badge Earned!', message: 'You earned Savings Star', time: '1h ago', unread: true },
     { id: 3, title: 'Weekly Report', message: 'Your emissions dropped 15%', time: '3h ago', unread: false },
   ]
+
+  const isLocked = (item) => {
+    return item.requiresOnboarding && !user?.onboardingComplete
+  }
 
   return (
     <div className="min-h-screen bg-gray-950 flex">
@@ -80,11 +105,11 @@ export default function Layout() {
         {/* Logo */}
         <div className="p-6 border-b border-gray-800/50">
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-atmos-500 to-atmos-700 flex items-center justify-center shadow-lg shadow-atmos-900/30">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-900/30">
               <Leaf className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold gradient-text">Atmos AI</h1>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Atmos AI</h1>
               <p className="text-[10px] text-gray-500 tracking-wider uppercase">Carbon Tracker</p>
             </div>
           </Link>
@@ -95,45 +120,81 @@ export default function Layout() {
           {navItems.map((item) => {
             const Icon = item.icon
             const isActive = location.pathname === item.path
+            const locked = isLocked(item)
+
+            if (locked) {
+              return (
+                <div
+                  key={item.path}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-600 cursor-not-allowed opacity-50"
+                  title="Complete calculator to unlock"
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="font-medium text-sm">{item.label}</span>
+                  <Lock className="w-3 h-3 ml-auto" />
+                </div>
+              )
+            }
+
             return (
               <Link
                 key={item.path}
                 to={item.path}
                 onClick={() => setSidebarOpen(false)}
-                className={`nav-item ${isActive ? 'active' : ''}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                  isActive
+                    ? 'bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-200'
+                }`}
               >
                 <Icon className="w-5 h-5" />
-                <span className="font-medium">{item.label}</span>
-                {isActive && <ChevronRight className="w-4 h-4 ml-auto text-atmos-400" />}
+                <span className="font-medium text-sm">{item.label}</span>
+                {isActive && <ChevronRight className="w-4 h-4 ml-auto text-emerald-400" />}
               </Link>
             )
           })}
         </nav>
 
+        {/* Onboarding Banner */}
+        {!user?.onboardingComplete && (
+          <div className="mx-4 mb-2 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+            <p className="text-xs text-amber-400 font-medium mb-1">⚠️ Setup Required</p>
+            <p className="text-xs text-gray-400 mb-2">Complete the calculator to unlock all features</p>
+            <Link
+              to="/calculator"
+              className="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1"
+            >
+              Go to Calculator <ChevronRight className="w-3 h-3" />
+            </Link>
+          </div>
+        )}
+
         {/* Eco Points Card */}
         <div className="p-4">
-          <div className="glass-card p-4 space-y-3">
+          <div className="bg-slate-800/60 backdrop-blur rounded-xl p-4 border border-slate-700/50 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-400">Eco Points</span>
-              <Zap className="w-4 h-4 text-atmos-400" />
+              <Zap className="w-4 h-4 text-emerald-400" />
             </div>
-            <p className="text-2xl font-bold text-atmos-400">{ecoPoints.toLocaleString()}</p>
+            <p className="text-2xl font-bold text-emerald-400">{ecoPoints.toLocaleString()}</p>
             <div className="w-full bg-gray-800 rounded-full h-2">
               <motion.div
-                className="bg-gradient-to-r from-atmos-500 to-atmos-400 h-2 rounded-full"
+                className="bg-gradient-to-r from-emerald-500 to-cyan-500 h-2 rounded-full"
                 initial={{ width: 0 }}
-                animate={{ width: '72%' }}
+                animate={{ width: `${Math.min(100, (ecoPoints / 10000) * 100)}%` }}
                 transition={{ duration: 1, delay: 0.5 }}
               />
             </div>
-            <p className="text-xs text-gray-500">Level 7 • 2,800 to next level</p>
+            <p className="text-xs text-gray-500">
+              {user?.onboardingComplete ? 'Keep tracking to earn more' : 'Complete calculator to start earning'}
+            </p>
           </div>
         </div>
 
         {/* User */}
         <div className="p-4 border-t border-gray-800/50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-ocean-500 to-atmos-500 flex items-center justify-center text-lg">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center text-lg overflow-hidden">
               {user?.picture ? (
                 <img src={user.picture} alt="avatar" className="w-10 h-10 rounded-full" />
               ) : (
@@ -151,7 +212,7 @@ export default function Layout() {
                       if (e.key === 'Enter') handleNameUpdate()
                       if (e.key === 'Escape') handleCancel()
                     }}
-                    className="bg-gray-800 text-white px-2 py-1 rounded text-xs border border-gray-700 focus:border-atmos-500 focus:outline-none w-28"
+                    className="bg-gray-800 text-white px-2 py-1 rounded text-xs border border-gray-700 focus:border-emerald-500 focus:outline-none w-28"
                     placeholder="Name"
                     autoFocus
                   />
@@ -175,7 +236,7 @@ export default function Layout() {
                   </p>
                   <button 
                     onClick={() => setIsEditingName(true)}
-                    className="text-gray-600 hover:text-atmos-400 transition-colors shrink-0"
+                    className="text-gray-600 hover:text-emerald-400 transition-colors shrink-0"
                   >
                     <Pencil className="w-3 h-3" />
                   </button>
@@ -185,7 +246,10 @@ export default function Layout() {
                 {user?.email || 'user@atmos.ai'}
               </p>
             </div>
-            <button className="p-2 hover:bg-gray-800 rounded-lg transition-colors">
+            <button 
+              onClick={handleLogout}
+              className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            >
               <LogOut className="w-4 h-4 text-gray-400" />
             </button>
           </div>
@@ -202,7 +266,7 @@ export default function Layout() {
                 onClick={() => setSidebarOpen(true)}
                 className="lg:hidden p-2 hover:bg-gray-800 rounded-xl transition-colors"
               >
-                <Menu className="w-5 h-5" />
+                <Menu className="w-5 h-5 text-white" />
               </button>
               <div>
                 <h2 className="text-lg font-semibold text-white">
@@ -229,7 +293,7 @@ export default function Layout() {
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 top-full mt-2 w-80 glass-card overflow-hidden z-50"
+                      className="absolute right-0 top-full mt-2 w-80 bg-slate-800/95 backdrop-blur rounded-xl border border-slate-700 overflow-hidden z-50"
                     >
                       <div className="p-4 border-b border-gray-800/50">
                         <h3 className="font-semibold text-white">Notifications</h3>
@@ -238,7 +302,7 @@ export default function Layout() {
                         {notifications.map((notif) => (
                           <div key={notif.id} className="p-4 border-b border-gray-800/30 hover:bg-gray-800/30 transition-colors">
                             <div className="flex items-start gap-3">
-                              <div className={`w-2 h-2 rounded-full mt-2 ${notif.unread ? 'bg-atmos-400' : 'bg-gray-600'}`} />
+                              <div className={`w-2 h-2 rounded-full mt-2 ${notif.unread ? 'bg-emerald-400' : 'bg-gray-600'}`} />
                               <div>
                                 <p className="text-sm font-medium text-white">{notif.title}</p>
                                 <p className="text-xs text-gray-400 mt-1">{notif.message}</p>
@@ -254,9 +318,9 @@ export default function Layout() {
               </div>
 
               {/* Quick Eco Points */}
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-atmos-900/30 rounded-full border border-atmos-800/30">
-                <Zap className="w-4 h-4 text-atmos-400" />
-                <span className="text-sm font-semibold text-atmos-400">{ecoPoints.toLocaleString()}</span>
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-emerald-900/30 rounded-full border border-emerald-800/30">
+                <Zap className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm font-semibold text-emerald-400">{ecoPoints.toLocaleString()}</span>
               </div>
             </div>
           </div>
