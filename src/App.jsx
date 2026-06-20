@@ -134,7 +134,10 @@ export const calculateCarbonFootprint = (manualData, healthData = null) => {
 // NEW: Check if user has completed onboarding
 // ============================================
 export const hasCompletedOnboarding = (user) => {
-  return user?.onboardingComplete === true
+  return user?.onboardingComplete === true && 
+         user?.carbonFootprint?.lastCalculated !== null &&
+         user?.age !== null &&
+         user?.ageGroup !== null
 }
 
 function App() {
@@ -146,22 +149,23 @@ function App() {
       // NEW: Migrate old users to new structure
       // If old user data doesn't have onboardingComplete, set it
       // ============================================
-      if (parsed && !parsed.hasOwnProperty('onboardingComplete')) {
-        parsed.onboardingComplete = false
-        parsed.dataSource = null
-        parsed.manualData = null
-        parsed.healthData = null
-        parsed.carbonFootprint = {
-          mobility: 0.00,
-          homeEnergy: 0.00,
-          diet: 0.00,
-          shopping: 0.00,
-          waste: 0.00,
-          total: 0.00,
-          lastCalculated: null
-        }
-        localStorage.setItem('user', JSON.stringify(parsed))
-      }
+     if (parsed && !parsed.hasOwnProperty('onboardingComplete')) {
+  parsed.onboardingComplete = false
+  parsed.manualData = null
+  parsed.carbonFootprint = {
+    mobility: 0.00, homeEnergy: 0.00, diet: 0.00,
+    shopping: 0.00, waste: 0.00, total: 0.00, lastCalculated: null
+  }
+  localStorage.setItem('user', JSON.stringify(parsed))
+}
+
+// NEW: Migrate users who don't have age (force re-onboarding)
+if (parsed && !parsed.hasOwnProperty('age')) {
+  parsed.age = null
+  parsed.ageGroup = null
+  parsed.onboardingComplete = false
+  localStorage.setItem('user', JSON.stringify(parsed))
+}
       return parsed
     }
     return null
