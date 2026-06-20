@@ -19,7 +19,7 @@ import { AppContext } from '../App'
 import api from '../utils/api'
 
 export default function Profile() {
-  const { user, setUser } = useContext(AppContext)
+  const { user, setUser, darkMode, setDarkMode } = useContext(AppContext)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
@@ -27,16 +27,11 @@ export default function Profile() {
   const [isEditingName, setIsEditingName] = useState(false)
   const [newName, setNewName] = useState('')
 
-  // Check if dark mode is currently active
-  const isDarkMode = () => {
-    return document.documentElement.classList.contains('dark')
-  }
-
   const [settings, setSettings] = useState({
     notifications: true,
     weeklyReports: true,
     challengeReminders: true,
-    darkMode: isDarkMode(),
+    darkMode: darkMode ?? true,
   })
 
   const toggleSetting = (key) => {
@@ -44,27 +39,19 @@ export default function Profile() {
       const newValue = !prev[key]
       
       if (key === 'darkMode') {
-        // Toggle dark class on html element
-        if (newValue) {
-          document.documentElement.classList.add('dark')
-        } else {
-          document.documentElement.classList.remove('dark')
-        }
-        // Save preference
-        localStorage.setItem('theme', newValue ? 'dark' : 'light')
+        setDarkMode?.(newValue)
       }
       
       return { ...prev, [key]: newValue }
     })
   }
 
-  // Sync settings with actual dark mode state on mount
   useEffect(() => {
     setSettings(prev => ({
       ...prev,
-      darkMode: isDarkMode()
+      darkMode: darkMode ?? true
     }))
-  }, [])
+  }, [darkMode])
 
   useEffect(() => {
     if (profile?.name || profile?.displayName) {
@@ -142,7 +129,6 @@ export default function Profile() {
 
   return (
     <div className="space-y-6">
-      {/* Profile Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -156,7 +142,7 @@ export default function Profile() {
               profile?.avatar || '🌱'
             )}
           </div>
-          <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-atmos-500 rounded-full flex items-center justify-center border-4 border-gray-900">
+          <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-atmos-500 rounded-full flex items-center justify-center border-4 border-gray-900 dark:border-gray-900">
             <Leaf className="w-4 h-4 text-white" />
           </div>
         </div>
@@ -172,31 +158,31 @@ export default function Profile() {
                   if (e.key === 'Enter') handleNameUpdate()
                   if (e.key === 'Escape') handleCancel()
                 }}
-                className="bg-gray-800 text-white px-3 py-1.5 rounded-lg text-sm border border-gray-700 focus:border-atmos-500 focus:outline-none w-48"
+                className="bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 rounded-lg text-sm border border-gray-300 dark:border-gray-700 focus:border-atmos-500 focus:outline-none w-48"
                 placeholder="Enter your name"
                 autoFocus
               />
               <button 
                 onClick={handleNameUpdate}
-                className="text-emerald-400 text-sm font-medium hover:text-emerald-300 px-2 py-1 rounded-lg hover:bg-emerald-900/20 transition-colors"
+                className="text-emerald-600 dark:text-emerald-400 text-sm font-medium hover:text-emerald-500 dark:hover:text-emerald-300 px-2 py-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/20 transition-colors"
               >
                 Save
               </button>
               <button 
                 onClick={handleCancel}
-                className="text-gray-400 text-sm font-medium hover:text-gray-300 px-2 py-1 rounded-lg hover:bg-gray-800 transition-colors"
+                className="text-gray-500 dark:text-gray-400 text-sm font-medium hover:text-gray-400 dark:hover:text-gray-300 px-2 py-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
               >
                 Cancel
               </button>
             </div>
           ) : (
             <div className="flex items-center justify-center gap-2">
-              <h2 className="text-xl font-bold text-white">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 {profile?.displayName || profile?.name || 'Eco Warrior'}
               </h2>
               <button 
                 onClick={() => setIsEditingName(true)}
-                className="p-1 text-gray-500 hover:text-atmos-400 hover:bg-gray-800 rounded-lg transition-colors"
+                className="p-1 text-gray-500 dark:text-gray-500 hover:text-atmos-500 dark:hover:text-atmos-400 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors"
                 title="Edit name"
               >
                 <Pencil className="w-3.5 h-3.5" />
@@ -205,28 +191,27 @@ export default function Profile() {
           )}
         </div>
         
-        <p className="text-gray-400 text-sm">{profile?.email || 'No email set'}</p>
-        <p className="text-xs text-gray-600 mt-1">
+        <p className="text-gray-500 dark:text-gray-400 text-sm">{profile?.email || 'No email set'}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-600 mt-1">
           Member since {profile?.joinDate ? new Date(profile.joinDate).getFullYear() : '2026'}
         </p>
 
         <div className="flex justify-center gap-4 mt-4">
-          <div className="text-center px-4 py-2 bg-gray-800/40 rounded-xl">
-            <p className="text-lg font-bold text-atmos-400">{profile?.currentStreak ?? 0}</p>
-            <p className="text-xs text-gray-500">Day Streak</p>
+          <div className="text-center px-4 py-2 bg-gray-200/40 dark:bg-gray-800/40 rounded-xl">
+            <p className="text-lg font-bold text-atmos-500 dark:text-atmos-400">{profile?.currentStreak ?? 0}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-500">Day Streak</p>
           </div>
-          <div className="text-center px-4 py-2 bg-gray-800/40 rounded-xl">
-            <p className="text-lg font-bold text-ocean-400">{profile?.totalCo2Saved ?? 0} kg</p>
-            <p className="text-xs text-gray-500">CO₂ Saved</p>
+          <div className="text-center px-4 py-2 bg-gray-200/40 dark:bg-gray-800/40 rounded-xl">
+            <p className="text-lg font-bold text-ocean-500 dark:text-ocean-400">{profile?.totalCo2Saved ?? 0} kg</p>
+            <p className="text-xs text-gray-500 dark:text-gray-500">CO₂ Saved</p>
           </div>
-          <div className="text-center px-4 py-2 bg-gray-800/40 rounded-xl">
-            <p className="text-lg font-bold text-amber-400">{profile?.badges?.length ?? 0}</p>
-            <p className="text-xs text-gray-500">Badges</p>
+          <div className="text-center px-4 py-2 bg-gray-200/40 dark:bg-gray-800/40 rounded-xl">
+            <p className="text-lg font-bold text-amber-500 dark:text-amber-400">{profile?.badges?.length ?? 0}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-500">Badges</p>
           </div>
         </div>
       </motion.div>
 
-      {/* Tabs */}
       <div className="flex gap-2">
         {tabs.map(tab => {
           const Icon = tab.icon
@@ -237,7 +222,7 @@ export default function Profile() {
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 activeTab === tab.id
                   ? 'bg-atmos-600 text-white'
-                  : 'bg-gray-800/60 text-gray-400 hover:bg-gray-800'
+                  : 'bg-gray-200/60 dark:bg-gray-800/60 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-800'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -247,7 +232,6 @@ export default function Profile() {
         })}
       </div>
 
-      {/* Tab Content */}
       <motion.div
         key={activeTab}
         initial={{ opacity: 0, y: 10 }}
@@ -259,33 +243,33 @@ export default function Profile() {
             <div className="grid grid-cols-2 gap-4">
               <div className="glass-card p-5">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-atmos-900/50 flex items-center justify-center">
-                    <Zap className="w-5 h-5 text-atmos-400" />
+                  <div className="w-10 h-10 rounded-xl bg-atmos-100 dark:bg-atmos-900/50 flex items-center justify-center">
+                    <Zap className="w-5 h-5 text-atmos-500 dark:text-atmos-400" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-400">Eco Points</p>
-                    <p className="text-xl font-bold text-white">{(profile?.ecoPoints ?? 0).toLocaleString()}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Eco Points</p>
+                    <p className="text-xl font-bold text-gray-900 dark:text-white">{(profile?.ecoPoints ?? 0).toLocaleString()}</p>
                   </div>
                 </div>
-                <div className="w-full bg-gray-800 rounded-full h-2">
+                <div className="w-full bg-gray-300 dark:bg-gray-800 rounded-full h-2">
                   <div 
                     className="bg-gradient-to-r from-atmos-500 to-atmos-400 h-2 rounded-full transition-all duration-500" 
                     style={{ width: `${levelInfo.percentage}%` }} 
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
                   Level {levelInfo.currentLevel} • {levelInfo.currentPoints} to Level {levelInfo.nextLevel}
                 </p>
               </div>
 
               <div className="glass-card p-5">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-ocean-900/50 flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 text-ocean-400" />
+                  <div className="w-10 h-10 rounded-xl bg-ocean-100 dark:bg-ocean-900/50 flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-ocean-500 dark:text-ocean-400" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-400">Weekly Progress</p>
-                    <p className="text-xl font-bold text-white">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Weekly Progress</p>
+                    <p className="text-xl font-bold text-gray-900 dark:text-white">
                       {weeklyProgress.reduce((a,b) => a+b, 0) > 0 ? '+' : ''}
                       {weeklyProgress.reduce((a,b) => a+b, 0)}
                     </p>
@@ -304,7 +288,7 @@ export default function Profile() {
             </div>
 
             <div className="glass-card p-5">
-              <h3 className="text-lg font-semibold text-white mb-4">Recent Activity</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</h3>
               <div className="space-y-4">
                 {(profile?.recentActivity || []).length > 0 ? (
                   profile.recentActivity.map((activity, i) => {
@@ -316,19 +300,19 @@ export default function Profile() {
                                  Zap;
                     return (
                       <div key={i} className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center flex-shrink-0">
+                        <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
                           <Icon className={`w-4 h-4 ${activity.color}`} />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-white">{activity.title}</p>
-                          <p className="text-xs text-gray-500">{activity.desc}</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">{activity.title}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500">{activity.desc}</p>
                         </div>
-                        <span className="text-xs text-gray-600">{activity.time}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-600">{activity.time}</span>
                       </div>
                     );
                   })
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-500">
                     <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
                     <p className="text-sm">No activity yet. Start by logging your carbon footprint!</p>
                   </div>
@@ -350,18 +334,18 @@ export default function Profile() {
                   className="glass-card p-5 text-center card-hover"
                 >
                   <div className="text-4xl mb-3">{badge.icon}</div>
-                  <h4 className="text-sm font-semibold text-white">{badge.name}</h4>
-                  <p className="text-xs text-gray-500 mt-1">{badge.description}</p>
-                  <p className="text-xs text-gray-600 mt-2">
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{badge.name}</h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">{badge.description}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-600 mt-2">
                     {badge.earned ? new Date(badge.earned).toLocaleDateString() : 'Recently earned'}
                   </p>
                 </motion.div>
               ))
             ) : (
-              <div className="col-span-full text-center py-12 text-gray-500">
+              <div className="col-span-full text-center py-12 text-gray-500 dark:text-gray-500">
                 <Award className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">No badges yet. Complete challenges to earn them!</p>
-                <p className="text-xs text-gray-600 mt-2">Try completing a challenge or saving CO₂</p>
+                <p className="text-xs text-gray-400 dark:text-gray-600 mt-2">Try completing a challenge or saving CO₂</p>
               </div>
             )}
           </div>
@@ -383,17 +367,17 @@ export default function Profile() {
                   className="glass-card p-4 flex items-center justify-between cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gray-800 flex items-center justify-center">
-                      <Icon className="w-5 h-5 text-gray-400" />
+                    <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
+                      <Icon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-white">{setting.label}</p>
-                      <p className="text-xs text-gray-500">{setting.desc}</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{setting.label}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500">{setting.desc}</p>
                     </div>
                   </div>
                   <div 
                     className={`relative w-12 h-6 rounded-full transition-colors ${
-                      settings[setting.key] ? 'bg-atmos-600' : 'bg-gray-600'
+                      settings[setting.key] ? 'bg-atmos-600' : 'bg-gray-400 dark:bg-gray-600'
                     }`}
                   >
                     <div 
@@ -412,7 +396,7 @@ export default function Profile() {
                 setUser(null)
                 window.location.replace('/')
               }}
-              className="w-full glass-card p-4 flex items-center justify-center gap-2 text-red-400 hover:bg-red-900/20 transition-colors"
+              className="w-full glass-card p-4 flex items-center justify-center gap-2 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
             >
               <LogOut className="w-5 h-5" />
               <span className="font-medium">Sign Out</span>
