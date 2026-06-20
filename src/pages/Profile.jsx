@@ -1,19 +1,8 @@
-import { useState, useEffect, useContext } from 'react'
+Import { useState, useEffect, useContext } from 'react'
 import { motion } from 'framer-motion'
 import { 
-  User, 
-  Award, 
-  Settings, 
-  Bell, 
-  Moon, 
-  Sun,
-  LogOut, 
-  Shield,
-  Leaf,
-  TrendingUp,
-  Calendar,
-  Zap,
-  Pencil
+  User, Award, Settings, Bell, Moon, Sun, LogOut, Shield,
+  Leaf, TrendingUp, Calendar, Zap, Pencil, Target, CheckCircle, Flame
 } from 'lucide-react'
 import { AppContext } from '../App'
 import api from '../utils/api'
@@ -23,9 +12,10 @@ export default function Profile() {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
-  
   const [isEditingName, setIsEditingName] = useState(false)
   const [newName, setNewName] = useState('')
+  const [activeChallenges, setActiveChallenges] = useState([])
+  const [completedChallenges, setCompletedChallenges] = useState([])
 
   const [settings, setSettings] = useState({
     notifications: true,
@@ -37,30 +27,18 @@ export default function Profile() {
   const toggleSetting = (key) => {
     setSettings(prev => {
       const newValue = !prev[key]
-      
-      if (key === 'darkMode') {
-        setDarkMode?.(newValue)
-      }
-      
+      if (key === 'darkMode') setDarkMode?.(newValue)
       return { ...prev, [key]: newValue }
     })
   }
 
-  useEffect(() => {
-    setSettings(prev => ({
-      ...prev,
-      darkMode: darkMode ?? true
-    }))
-  }, [darkMode])
-
-  useEffect(() => {
-    if (profile?.name || profile?.displayName) {
-      setNewName(profile.displayName || profile.name)
-    }
-  }, [profile])
+  useEffect(() => { setSettings(prev => ({ ...prev, darkMode: darkMode ?? true })) }, [darkMode])
+  useEffect(() => { if (profile?.name || profile?.displayName) setNewName(profile.displayName || profile.name) }, [profile])
 
   useEffect(() => {
     fetchProfile()
+    fetchActiveChallenges()
+    fetchCompletedChallenges()
   }, [])
 
   const fetchProfile = async () => {
@@ -74,21 +52,27 @@ export default function Profile() {
     }
   }
 
+  const fetchActiveChallenges = async () => {
+    try {
+      const res = await api.get('/challenges/active')
+      if (res.data?.success) setActiveChallenges(res.data.activeChallenges || [])
+    } catch (err) { console.error('Error fetching active challenges:', err) }
+  }
+
+  const fetchCompletedChallenges = async () => {
+    try {
+      const res = await api.get('/challenges/completed')
+      if (res.data?.success) setCompletedChallenges(res.data.challengesCompleted || [])
+    } catch (err) { console.error('Error fetching completed challenges:', err) }
+  }
+
   const handleNameUpdate = async () => {
     const nameToSave = newName.trim() || profile?.name || 'Eco Warrior'
     const updatedProfile = { ...profile, displayName: nameToSave, name: nameToSave }
     setProfile(updatedProfile)
-    
-    if (setUser) {
-      setUser(prev => ({ ...prev, displayName: nameToSave, name: nameToSave }))
-    }
-    
-    try {
-      await api.patch('/user/profile', { name: nameToSave, displayName: nameToSave })
-    } catch (e) {
-      console.error('Failed to update name:', e)
-    }
-    
+    if (setUser) setUser(prev => ({ ...prev, displayName: nameToSave, name: nameToSave }))
+    try { await api.patch('/user/profile', { name: nameToSave, displayName: nameToSave }) } 
+    catch (e) { console.error('Failed to update name:', e) }
     setIsEditingName(false)
   }
 
@@ -99,6 +83,7 @@ export default function Profile() {
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: User },
+    { id: 'challenges', label: 'Challenges', icon: Target },
     { id: 'badges', label: 'Badges', icon: Award },
     { id: 'settings', label: 'Settings', icon: Settings },
   ]
@@ -106,21 +91,14 @@ export default function Profile() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="w-10 h-10 border-2 border-atmos-500 border-t-transparent rounded-full"
-        />
+        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          className="w-10 h-10 border-2 border-atmos-500 border-t-transparent rounded-full" />
       </div>
     )
   }
 
   const levelInfo = profile?.levelProgress || {
-    currentLevel: 1,
-    nextLevel: 2,
-    currentPoints: 0,
-    pointsToNext: 100,
-    percentage: 0
+    currentLevel: 1, nextLevel: 2, currentPoints: 0, pointsToNext: 100, percentage: 0
   }
 
   const weeklyProgress = profile?.weeklyProgress || [0, 0, 0, 0, 0, 0, 0]
@@ -129,18 +107,13 @@ export default function Profile() {
 
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass-card p-6 text-center"
-      >
+      {/* Profile Header */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-6 text-center">
         <div className="relative inline-block">
           <div className="w-24 h-24 rounded-full bg-gradient-to-br from-atmos-500 to-ocean-500 flex items-center justify-center text-4xl mx-auto shadow-lg shadow-atmos-900/30">
             {user?.picture ? (
               <img src={user.picture} alt="avatar" className="w-24 h-24 rounded-full" />
-            ) : (
-              profile?.avatar || '🌱'
-            )}
+            ) : (profile?.avatar || '🌱')}
           </div>
           <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-atmos-500 rounded-full flex items-center justify-center border-4 border-gray-900 dark:border-gray-900">
             <Leaf className="w-4 h-4 text-white" />
@@ -150,51 +123,24 @@ export default function Profile() {
         <div className="mt-4">
           {isEditingName ? (
             <div className="flex items-center justify-center gap-2">
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleNameUpdate()
-                  if (e.key === 'Escape') handleCancel()
-                }}
+              <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleNameUpdate(); if (e.key === 'Escape') handleCancel() }}
                 className="bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 rounded-lg text-sm border border-gray-300 dark:border-gray-700 focus:border-atmos-500 focus:outline-none w-48"
-                placeholder="Enter your name"
-                autoFocus
-              />
-              <button 
-                onClick={handleNameUpdate}
-                className="text-emerald-600 dark:text-emerald-400 text-sm font-medium hover:text-emerald-500 dark:hover:text-emerald-300 px-2 py-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/20 transition-colors"
-              >
-                Save
-              </button>
-              <button 
-                onClick={handleCancel}
-                className="text-gray-500 dark:text-gray-400 text-sm font-medium hover:text-gray-400 dark:hover:text-gray-300 px-2 py-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
-              >
-                Cancel
-              </button>
+                placeholder="Enter your name" autoFocus />
+              <button onClick={handleNameUpdate} className="text-emerald-600 dark:text-emerald-400 text-sm font-medium hover:text-emerald-500 px-2 py-1 rounded-lg hover:bg-emerald-100 dark:hover:bg-emerald-900/20 transition-colors">Save</button>
+              <button onClick={handleCancel} className="text-gray-500 dark:text-gray-400 text-sm font-medium hover:text-gray-400 px-2 py-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">Cancel</button>
             </div>
           ) : (
             <div className="flex items-center justify-center gap-2">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                {profile?.displayName || profile?.name || 'Eco Warrior'}
-              </h2>
-              <button 
-                onClick={() => setIsEditingName(true)}
-                className="p-1 text-gray-500 dark:text-gray-500 hover:text-atmos-500 dark:hover:text-atmos-400 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                title="Edit name"
-              >
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">{profile?.displayName || profile?.name || 'Eco Warrior'}</h2>
+              <button onClick={() => setIsEditingName(true)} className="p-1 text-gray-500 dark:text-gray-500 hover:text-atmos-500 dark:hover:text-atmos-400 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors" title="Edit name">
                 <Pencil className="w-3.5 h-3.5" />
               </button>
             </div>
           )}
         </div>
-        
         <p className="text-gray-500 dark:text-gray-400 text-sm">{profile?.email || 'No email set'}</p>
-        <p className="text-xs text-gray-500 dark:text-gray-600 mt-1">
-          Member since {profile?.joinDate ? new Date(profile.joinDate).getFullYear() : '2026'}
-        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-600 mt-1">Member since {profile?.joinDate ? new Date(profile.joinDate).getFullYear() : '2026'}</p>
 
         <div className="flex justify-center gap-4 mt-4">
           <div className="text-center px-4 py-2 bg-gray-200/40 dark:bg-gray-800/40 rounded-xl">
@@ -212,32 +158,24 @@ export default function Profile() {
         </div>
       </motion.div>
 
-      <div className="flex gap-2">
+      {/* Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
         {tabs.map(tab => {
           const Icon = tab.icon
           return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                activeTab === tab.id
-                  ? 'bg-atmos-600 text-white'
-                  : 'bg-gray-200/60 dark:bg-gray-800/60 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-800'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label}
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
+                activeTab === tab.id ? 'bg-atmos-600 text-white' : 'bg-gray-200/60 dark:bg-gray-800/60 text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-800'
+              }`}>
+              <Icon className="w-4 h-4" />{tab.label}
             </button>
           )
         })}
       </div>
 
-      <motion.div
-        key={activeTab}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
+      <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+
+        {/* OVERVIEW TAB */}
         {activeTab === 'overview' && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -252,14 +190,9 @@ export default function Profile() {
                   </div>
                 </div>
                 <div className="w-full bg-gray-300 dark:bg-gray-800 rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-atmos-500 to-atmos-400 h-2 rounded-full transition-all duration-500" 
-                    style={{ width: `${levelInfo.percentage}%` }} 
-                  />
+                  <div className="bg-gradient-to-r from-atmos-500 to-atmos-400 h-2 rounded-full transition-all duration-500" style={{ width: `${levelInfo.percentage}%` }} />
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                  Level {levelInfo.currentLevel} • {levelInfo.currentPoints} to Level {levelInfo.nextLevel}
-                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">Level {levelInfo.currentLevel} • {levelInfo.currentPoints} to Level {levelInfo.nextLevel}</p>
               </div>
 
               <div className="glass-card p-5">
@@ -270,34 +203,51 @@ export default function Profile() {
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Weekly Progress</p>
                     <p className="text-xl font-bold text-gray-900 dark:text-white">
-                      {weeklyProgress.reduce((a,b) => a+b, 0) > 0 ? '+' : ''}
-                      {weeklyProgress.reduce((a,b) => a+b, 0)}
+                      {weeklyProgress.reduce((a,b) => a+b, 0) > 0 ? '+' : ''}{weeklyProgress.reduce((a,b) => a+b, 0)}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-end gap-1 h-8">
                   {normalizedWeekly.map((h, i) => (
-                    <div 
-                      key={i} 
-                      className="flex-1 bg-ocean-500/30 rounded-t transition-all duration-300" 
-                      style={{ height: `${Math.max(5, h)}%` }} 
-                    />
+                    <div key={i} className="flex-1 bg-ocean-500/30 rounded-t transition-all duration-300" style={{ height: `${Math.max(5, h)}%` }} />
                   ))}
                 </div>
               </div>
             </div>
+
+            {/* Active Challenges Quick View */}
+            {activeChallenges.length > 0 && (
+              <div className="glass-card p-5">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                  <Target className="w-5 h-5 text-emerald-400" />
+                  Active Challenges
+                </h3>
+                <div className="space-y-3">
+                  {activeChallenges.slice(0, 3).map(challenge => {
+                    const progress = Math.round(((challenge.daysCompleted?.length || 0) / (challenge.totalDays || 7)) * 100)
+                    return (
+                      <div key={challenge.id} className="flex items-center gap-3 p-3 bg-gray-200/30 dark:bg-gray-800/30 rounded-xl">
+                        <span className="text-2xl">{challenge.icon}</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">{challenge.title}</p>
+                          <div className="w-full bg-gray-300 dark:bg-gray-700 rounded-full h-1.5 mt-1">
+                            <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${progress}%` }} />
+                          </div>
+                        </div>
+                        <span className="text-xs font-medium text-emerald-400">{progress}%</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="glass-card p-5">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</h3>
               <div className="space-y-4">
                 {(profile?.recentActivity || []).length > 0 ? (
                   profile.recentActivity.map((activity, i) => {
-                    const Icon = activity.icon === 'Award' ? Award : 
-                                 activity.icon === 'Calendar' ? Calendar :
-                                 activity.icon === 'Leaf' ? Leaf :
-                                 activity.icon === 'Shield' ? Shield :
-                                 activity.icon === 'TrendingUp' ? TrendingUp :
-                                 Zap;
+                    const Icon = activity.icon === 'Award' ? Award : activity.icon === 'Calendar' ? Calendar : activity.icon === 'Leaf' ? Leaf : activity.icon === 'Shield' ? Shield : activity.icon === 'TrendingUp' ? TrendingUp : Zap;
                     return (
                       <div key={i} className="flex items-start gap-3">
                         <div className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
@@ -309,7 +259,7 @@ export default function Profile() {
                         </div>
                         <span className="text-xs text-gray-400 dark:text-gray-600">{activity.time}</span>
                       </div>
-                    );
+                    )
                   })
                 ) : (
                   <div className="text-center py-8 text-gray-500 dark:text-gray-500">
@@ -322,35 +272,114 @@ export default function Profile() {
           </div>
         )}
 
+        {/* CHALLENGES TAB */}
+        {activeTab === 'challenges' && (
+          <div className="space-y-4">
+            {/* Active Challenges */}
+            {activeChallenges.length > 0 && (
+              <div className="glass-card p-5">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <Target className="w-5 h-5 text-emerald-400" />
+                  In Progress ({activeChallenges.length})
+                </h3>
+                <div className="space-y-4">
+                  {activeChallenges.map(challenge => {
+                    const progress = Math.round(((challenge.daysCompleted?.length || 0) / (challenge.totalDays || 7)) * 100)
+                    const today = new Date().toISOString().split('T')[0]
+                    const alreadyCheckedIn = challenge.daysCompleted?.includes(today)
+                    return (
+                      <div key={challenge.id} className="bg-gradient-to-r from-emerald-900/10 to-cyan-900/10 rounded-xl p-4 border border-emerald-800/20">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{challenge.icon}</span>
+                            <div>
+                              <p className="font-medium text-gray-900 dark:text-white">{challenge.title}</p>
+                              <p className="text-xs text-gray-500">{challenge.category} • {challenge.difficulty}</p>
+                            </div>
+                          </div>
+                          {alreadyCheckedIn ? (
+                            <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-900/20 px-2 py-1 rounded-full">
+                              <CheckCircle className="w-3 h-3" /> Checked in
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-xs text-amber-400 bg-amber-900/20 px-2 py-1 rounded-full">
+                              <Flame className="w-3 h-3" /> Check in today
+                            </span>
+                          )}
+                        </div>
+                        <div className="w-full bg-gray-300 dark:bg-gray-700 rounded-full h-2.5">
+                          <div className="bg-gradient-to-r from-emerald-500 to-cyan-500 h-2.5 rounded-full transition-all" style={{ width: `${progress}%` }} />
+                        </div>
+                        <div className="flex justify-between mt-1">
+                          <span className="text-xs text-gray-500">{challenge.daysCompleted?.length || 0} / {challenge.totalDays || 7} days</span>
+                          <span className="text-xs text-emerald-400">{progress}%</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Completed Challenges */}
+            {completedChallenges.length > 0 && (
+              <div className="glass-card p-5">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-emerald-400" />
+                  Completed ({completedChallenges.length})
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {completedChallenges.map((challenge, index) => (
+                    <div key={challenge.id || index} className="bg-gray-200/30 dark:bg-gray-800/30 rounded-xl p-4 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-emerald-900/20 flex items-center justify-center">
+                        <CheckCircle className="w-5 h-5 text-emerald-400" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">{challenge.title}</p>
+                        <p className="text-xs text-gray-500">{new Date(challenge.completedAt).toLocaleDateString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-emerald-400">{challenge.co2Reduction} kg</p>
+                        <p className="text-xs text-gray-500">CO₂ saved</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeChallenges.length === 0 && completedChallenges.length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                <Target className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">No challenges yet. Head to the Challenges page to start!</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* BADGES TAB */}
         {activeTab === 'badges' && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {(profile?.badges || []).length > 0 ? (
               profile.badges.map((badge, i) => (
-                <motion.div
-                  key={badge.id || i}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="glass-card p-5 text-center card-hover"
-                >
+                <motion.div key={badge.id || i} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1 }}
+                  className="glass-card p-5 text-center card-hover">
                   <div className="text-4xl mb-3">{badge.icon}</div>
                   <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{badge.name}</h4>
                   <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">{badge.description}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-600 mt-2">
-                    {badge.earned ? new Date(badge.earned).toLocaleDateString() : 'Recently earned'}
-                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-600 mt-2">{badge.earned ? new Date(badge.earned).toLocaleDateString() : 'Recently earned'}</p>
                 </motion.div>
               ))
             ) : (
               <div className="col-span-full text-center py-12 text-gray-500 dark:text-gray-500">
                 <Award className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">No badges yet. Complete challenges to earn them!</p>
-                <p className="text-xs text-gray-400 dark:text-gray-600 mt-2">Try completing a challenge or saving CO₂</p>
               </div>
             )}
           </div>
         )}
 
+        {/* SETTINGS TAB */}
         {activeTab === 'settings' && (
           <div className="space-y-4">
             {[
@@ -361,11 +390,8 @@ export default function Profile() {
             ].map((setting) => {
               const Icon = setting.icon
               return (
-                <div 
-                  key={setting.key} 
-                  onClick={() => toggleSetting(setting.key)}
-                  className="glass-card p-4 flex items-center justify-between cursor-pointer"
-                >
+                <div key={setting.key} onClick={() => toggleSetting(setting.key)}
+                  className="glass-card p-4 flex items-center justify-between cursor-pointer">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
                       <Icon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
@@ -375,31 +401,16 @@ export default function Profile() {
                       <p className="text-xs text-gray-500 dark:text-gray-500">{setting.desc}</p>
                     </div>
                   </div>
-                  <div 
-                    className={`relative w-12 h-6 rounded-full transition-colors ${
-                      settings[setting.key] ? 'bg-atmos-600' : 'bg-gray-400 dark:bg-gray-600'
-                    }`}
-                  >
-                    <div 
-                      className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                        settings[setting.key] ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </div>    
+                  <div className={`relative w-12 h-6 rounded-full transition-colors ${settings[setting.key] ? 'bg-atmos-600' : 'bg-gray-400 dark:bg-gray-600'}`}>
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${settings[setting.key] ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </div>
                 </div>
               )
             })}
 
-            <button
-              onClick={() => {
-                localStorage.clear()
-                setUser(null)
-                window.location.replace('/')
-              }}
-              className="w-full glass-card p-4 flex items-center justify-center gap-2 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="font-medium">Sign Out</span>
+            <button onClick={() => { localStorage.clear(); setUser(null); window.location.replace('/') }}
+              className="w-full glass-card p-4 flex items-center justify-center gap-2 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors">
+              <LogOut className="w-5 h-5" /><span className="font-medium">Sign Out</span>
             </button>
           </div>
         )}
