@@ -7,14 +7,13 @@ import { AppContext } from '../App';
 export default function Onboarding() {
   const { user, setUser } = useContext(AppContext);
   const navigate = useNavigate();
-  const [step, setStep] = useState(1); // 1: Welcome, 2: Age Input
+  const [step, setStep] = useState(1);
   const [age, setAge] = useState('');
   const [ageError, setAgeError] = useState('');
 
-  // If already onboarded, go to dashboard
   useEffect(() => {
-    if (user?.onboardingComplete && user?.carbonFootprint?.lastCalculated) {
-      navigate('/dashboard');
+    if (user?.onboardingComplete === true && user?.carbonFootprint?.lastCalculated) {
+      navigate('/dashboard', { replace: true });
     }
   }, [user, navigate]);
 
@@ -25,17 +24,18 @@ export default function Onboarding() {
       return;
     }
 
-    // Save age to user
+    const ageGroup = getAgeGroup(ageNum);
     const updatedUser = {
       ...user,
       age: ageNum,
-      ageGroup: getAgeGroup(ageNum)
+      ageGroup: ageGroup,
+      onboardingComplete: false
     };
     
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
     setAgeError('');
-    setStep(2); // Move to calculator intro
+    setStep(2);
   };
 
   const getAgeGroup = (age) => {
@@ -60,7 +60,6 @@ export default function Onboarding() {
     return labels[group] || group;
   };
 
-  // Step 1: Welcome + Age Input
   const renderWelcome = () => (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -80,7 +79,6 @@ export default function Onboarding() {
         </p>
       </div>
 
-      {/* Age Input */}
       <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 text-left space-y-4">
         <div className="flex items-center gap-2 mb-2">
           <Calendar className="w-5 h-5 text-emerald-400" />
@@ -132,7 +130,6 @@ export default function Onboarding() {
     </motion.div>
   );
 
-  // Step 2: Calculator Intro
   const renderCalculatorIntro = () => (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
