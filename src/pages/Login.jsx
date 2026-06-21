@@ -39,6 +39,7 @@ export default function Login() {
         setEcoPoints(backendUser.ecoPoints || 0);
         localStorage.setItem('user', JSON.stringify(fullUser));
         localStorage.setItem('token', credentialResponse.credential);
+        localStorage.setItem('userId', backendUser.userId || googleId);
 
         const isExistingUser = backendUser.onboardingComplete === true && 
                                backendUser.carbonFootprint?.lastCalculated;
