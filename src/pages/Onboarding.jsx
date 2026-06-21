@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Leaf, Calculator, ArrowRight, Calendar } from 'lucide-react';
 import { AppContext } from '../App';
+import api from '../utils/api';
 
 export default function Onboarding() {
   const { user, setUser } = useContext(AppContext);
@@ -10,6 +11,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(1);
   const [age, setAge] = useState('');
   const [ageError, setAgeError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (user?.onboardingComplete === true && user?.carbonFootprint?.lastCalculated) {
@@ -17,24 +19,43 @@ export default function Onboarding() {
     }
   }, [user, navigate]);
 
-  const handleAgeSubmit = () => {
+  const handleAgeSubmit = async () => {
     const ageNum = parseInt(age);
     if (!age || isNaN(ageNum) || ageNum < 13 || ageNum > 100) {
       setAgeError('Please enter a valid age between 13 and 100');
       return;
     }
 
+    setIsSaving(true);
     const ageGroup = getAgeGroup(ageNum);
+
+    // CRITICAL FIX: Save age to backend FIRST
+    try {
+      await api.patch('/api/user/profile', {
+        age: ageNum,
+        ageGroup: ageGroup,
+        onboardingComplete: false
+      });
+
+      console.log('[ONBOARDING] Age saved to backend:', ageNum, ageGroup);
+    } catch (err) {
+      console.error('[ONBOARDING] Failed to save age:', err);
+      setAgeError('Failed to save. Please check your connection and try again.');
+      setIsSaving(false);
+      return;
+    }
+
     const updatedUser = {
       ...user,
       age: ageNum,
       ageGroup: ageGroup,
       onboardingComplete: false
     };
-    
+
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
     setAgeError('');
+    setIsSaving(false);
     setStep(2);
   };
 
@@ -84,7 +105,7 @@ export default function Onboarding() {
           <Calendar className="w-5 h-5 text-emerald-400" />
           <label className="text-white font-medium">What's your age?</label>
         </div>
-        
+
         <input
           type="number"
           value={age}
@@ -95,10 +116,11 @@ export default function Onboarding() {
           placeholder="e.g., 25"
           min="13"
           max="100"
-          className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none transition-colors text-center text-lg"
-          onKeyDown={(e) => e.key === 'Enter' && handleAgeSubmit()}
+          disabled={isSaving}
+          className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none transition-colors text-center text-lg disabled:opacity-50"
+          onKeyDown={(e) => e.key === 'Enter' && !isSaving && handleAgeSubmit()}
         />
-        
+
         {ageError && (
           <p className="text-red-400 text-sm text-center">{ageError}</p>
         )}
@@ -115,13 +137,23 @@ export default function Onboarding() {
       </div>
 
       <motion.button
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
+        whileHover={{ scale: isSaving ? 1 : 1.02 }}
+        whileTap={{ scale: isSaving ? 1 : 0.98 }}
         onClick={handleAgeSubmit}
-        className="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-semibold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+        disabled={isSaving}
+        className="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white font-semibold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Continue
-        <ArrowRight className="w-5 h-5" />
+        {isSaving ? (
+          <>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            Saving...
+          </>
+        ) : (
+          <>
+            Continue
+            <ArrowRight className="w-5 h-5" />
+          </>
+        )}
       </motion.button>
 
       <p className="text-gray-600 text-xs">
