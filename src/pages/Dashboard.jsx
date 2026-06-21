@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
   Leaf, Flame, TrendingDown, Award, ArrowUpRight, ArrowDownRight, Activity,
-  Car, Home, Utensils, ShoppingBag, Trash2, AlertCircle, Calculator, Target, CheckCircle
+  Car, Home, Utensils, ShoppingBag, Trash2, AlertCircle, Calculator, Target, CheckCircle,
+  RefreshCw
 } from 'lucide-react'
 import { Doughnut } from 'react-chartjs-2'
 import { Chart as ChartJS, ArcElement, Title, Tooltip, Legend } from 'chart.js'
@@ -21,9 +22,6 @@ const fadeIn = {
 export default function Dashboard() {
   const { user, setUser } = useContext(AppContext)
   const navigate = useNavigate()
-  const [footprint, setFootprint] = useState(null)
-  const [insights, setInsights] = useState(null)
-  const [activeChallenges, setActiveChallenges] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -33,43 +31,72 @@ export default function Dashboard() {
     }
   }, [user, navigate])
 
+  // Load data - prefer cached data, minimal API calls
   useEffect(() => {
     if (user?.onboardingComplete) {
-      fetchData()
+      loadDashboardData()
     }
   }, [user])
 
-  const fetchData = async () => {
+  const loadDashboardData = async () => {
     setLoading(true)
     setError(null)
-    try {
-      const [footprintRes, insightsRes, activeRes] = await Promise.all([
-        api.get('/carbon/footprint'),
-        api.post('/ai/insights', {
-          userData: {
-            carbonFootprint: user?.carbonFootprint,
-            weeklyEmissions: user?.carbonHistory?.slice(-7) || []
-          }
-        }),
-        api.get('/challenges/active')
-      ])
 
-      if (footprintRes.data?.success) {
-        setFootprint(footprintRes.data.carbonFootprint)
+    try {
+      // If we have cached dashboard data in user context, use it immediately
+      if (user?.dashboardCache?.breakdown && user?.carbonFootprint?.lastCalculated) {
+        console.log('[DASHBOARD] Using cached data - 0 API calls')
+        setLoading(false)
+        return
       }
-      if (insightsRes.data?.success) {
-        setInsights(insightsRes.data.data)
-      }
-      if (activeRes.data?.success) {
-        setActiveChallenges(activeRes.data.activeChallenges || [])
+
+      // Otherwise fetch from backend (should have cache there too)
+      console.log('[DASHBOARD] Fetching from backend...')
+      const res = await api.get('/api/user/profile')
+
+      if (res.data?.success) {
+        const fresh = res.data.profile
+        setUser(prev => {
+          const updated = { ...prev, ...fresh }
+          localStorage.setItem('user', JSON.stringify(updated))
+          return updated
+        })
       }
     } catch (err) {
-      console.error('Dashboard fetch error:', err)
-      setError('Failed to load data. Please try again.')
+      console.error('Dashboard load error:', err)
+      setError('Failed to refresh data')
     } finally {
       setLoading(false)
     }
   }
+
+  // Generate insights locally if none cached
+  const getInsights = () => {
+    if (user?.insights?.summary) return user.insights
+
+    const fp = user?.carbonFootprint
+    if (!fp) return null
+
+    // Local fallback insights (zero API call)
+    return {
+      summary: `Your monthly carbon footprint is ${fp.total} kg CO₂.`,
+      keyInsights: [
+        `Transport: ${fp.mobility} kg`,
+        `Home Energy: ${fp.homeEnergy} kg`,
+        `Diet: ${fp.diet} kg`,
+      ],
+      actionItems: [
+        { title: 'Reduce Transport', impact: 'Use public transport', difficulty: 'Medium', co2Saved: '~20 kg' },
+        { title: 'Save Energy', impact: 'Switch to LED', difficulty: 'Easy', co2Saved: '~5 kg' },
+      ],
+      trendAnalysis: 'Track regularly for trends.',
+      goalProgress: { current: fp.total, target: Math.max(50, fp.total * 0.7), unit: 'kg CO2e' }
+    }
+  }
+
+  const footprint = user?.carbonFootprint
+  const insights = getInsights()
+  const activeChallenges = user?.activeChallenges || []
 
   const statsCards = footprint ? [
     { title: 'Total CO₂', value: `${footprint.total} kg`, change: 'This month', trend: 'neutral', icon: Flame, color: 'from-red-500/20 to-orange-500/20', iconColor: 'text-orange-400' },
@@ -129,9 +156,18 @@ export default function Dashboard() {
           <h2 className="text-2xl font-bold text-white">Good Evening, {user?.name || 'Eco Warrior'}!</h2>
           <p className="text-gray-400 mt-1">{footprint?.total > 0 ? 'Your real carbon footprint is tracked below' : 'Complete the calculator to start tracking'}</p>
         </div>
-        <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-emerald-900/30 rounded-full border border-emerald-800/30">
-          <Activity className="w-4 h-4 text-emerald-400" />
-          <span className="text-sm text-emerald-400 font-medium">Streak: {user?.streak || 0} days</span>
+        <div className="hidden md:flex items-center gap-3">
+          <button 
+            onClick={loadDashboardData}
+            className="flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-lg border border-slate-700 hover:border-emerald-500/50 text-gray-400 hover:text-emerald-400 transition-all"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span className="text-sm">Refresh</span>
+          </button>
+          <div className="flex items-center gap-2 px-4 py-2 bg-emerald-900/30 rounded-full border border-emerald-800/30">
+            <Activity className="w-4 h-4 text-emerald-400" />
+            <span className="text-sm text-emerald-400 font-medium">Streak: {user?.streak || 0} days</span>
+          </div>
         </div>
       </motion.div>
 
@@ -168,7 +204,7 @@ export default function Dashboard() {
         <EmptyState />
       )}
 
-      {/* NEW: Active Challenges Section */}
+      {/* Active Challenges */}
       {activeChallenges.length > 0 && (
         <motion.div {...fadeIn} transition={{ ...fadeIn.transition, delay: 0.2 }}>
           <div className="flex items-center justify-between mb-3">
@@ -265,12 +301,20 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* AI Insights */}
+      {/* AI Insights - from cache, no API call */}
       {insights && footprint?.total > 0 && (
         <motion.div {...fadeIn} transition={{ ...fadeIn.transition, delay: 0.5 }} className="bg-slate-800 rounded-xl p-6 border border-slate-700">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center"><Leaf className="w-5 h-5 text-white" /></div>
-            <div><h3 className="text-lg font-semibold text-white">AI Insights</h3><p className="text-sm text-gray-500">Powered by Gemini 2.5 Flash</p></div>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center"><Leaf className="w-5 h-5 text-white" /></div>
+              <div><h3 className="text-lg font-semibold text-white">AI Insights</h3><p className="text-sm text-gray-500">{user?.insights?.generatedAt ? 'Cached insights' : 'Basic insights'}</p></div>
+            </div>
+            <button 
+              onClick={() => navigate('/chat')}
+              className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
+            >
+              Ask Atmos →
+            </button>
           </div>
           <p className="text-gray-300 leading-relaxed mb-4">{insights.summary}</p>
           <div className="grid md:grid-cols-2 gap-4 mb-4">
