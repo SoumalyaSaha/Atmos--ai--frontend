@@ -1,36 +1,49 @@
-import axios from 'axios'
+import axios from 'axios';
 
-const API_URL = 'https://atmosbackend-production.up.railway.app/api'
+const API_BASE_URL = 'https://tmosbackend-production.up.railway.app/api';
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
+  timeout: 30000,
   headers: {
-    'Content-Type': 'application/json',
-  },
-})
+    'Content-Type': 'application/json'
+  }
+});
 
-// Request interceptor
+// [FIXED] Interceptor to add x-user-id header on EVERY request
 api.interceptors.request.use(
   (config) => {
-    // Google OAuth: userId is the googleId (decoded.sub)
-    const userId = localStorage.getItem('userId')
+    const userId = localStorage.getItem('userId');
+    
     if (userId) {
-      config.headers['x-user-id'] = userId
-      // Also send as Bearer token for backward compatibility
-      config.headers.Authorization = `Bearer ${userId}`
+      config.headers['x-user-id'] = userId;
     }
-    return config
+    
+    // Also add Authorization Bearer if token exists
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return config;
   },
-  (error) => Promise.reject(error)
-)
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
-// Response interceptor
+// Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error.response?.data || error.message)
-    return Promise.reject(error)
+    if (error.response?.status === 429) {
+      console.warn('[API] Rate limited:', error.response.data);
+    }
+    if (error.response?.status === 404) {
+      console.warn('[API] Not found:', error.config?.url);
+    }
+    return Promise.reject(error);
   }
-)
+);
 
-export default api
+export default api;
