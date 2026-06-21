@@ -12,39 +12,18 @@ export default function Login() {
     try {
       const decoded = JSON.parse(atob(credentialResponse.credential.split('.')[1]));
       
-      const googleId = decoded.sub; // Google's unique user ID
+      const googleId = decoded.sub; // Google's stable unique user ID
       const userData = {
         name: decoded.name || 'Eco Warrior',
         email: decoded.email || 'user@atmos.ai',
         picture: decoded.picture || null,
         googleId: googleId,
         displayName: decoded.name || 'Eco Warrior',
-        
-        // Age fields for personalized calculations
-        age: null,
-        ageGroup: null,
-        
-        // Onboarding tracking
-        onboardingComplete: false,
-        dataSource: null,
-        manualData: null,
-        
-        // Calculated carbon footprint (all sectors)
-        carbonFootprint: {
-          mobility: 0.00,
-          homeEnergy: 0.00,
-          diet: 0.00,
-          shopping: 0.00,
-          waste: 0.00,
-          total: 0.00,
-          lastCalculated: null
-        }
       };
       
-      // CRITICAL: Store googleId as userId for backend API calls
+      // Store in localStorage for API calls
       localStorage.setItem('userId', googleId);
-      localStorage.setItem('token', googleId); // For Bearer token
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('token', googleId);
       
       // Register/login with backend
       try {
@@ -56,29 +35,50 @@ export default function Login() {
         });
         
         if (res.data?.success) {
-          // Merge backend data with Google data
+          const backendUser = res.data.user;
+          
+          // [FIXED] Check if returning user has completed onboarding
+          const isOnboardingComplete = backendUser.onboardingComplete === true;
+          const hasCarbonData = backendUser.carbonFootprint && 
+                                backendUser.carbonFootprint.lastCalculated !== null &&
+                                backendUser.carbonFootprint.total > 0;
+          
           const mergedUser = { 
             ...userData, 
-            ...res.data.user,
-            ecoPoints: res.data.user.ecoPoints || 0,
-            streak: res.data.user.streak || 0,
-            badges: res.data.user.badges || []
+            ...backendUser,
+            onboardingComplete: isOnboardingComplete,
+            ecoPoints: backendUser.ecoPoints || 0,
+            streak: backendUser.streak || 0,
+            badges: backendUser.badges || []
           };
+          
           setUser(mergedUser);
-          setEcoPoints(res.data.user.ecoPoints || 0);
+          setEcoPoints(backendUser.ecoPoints || 0);
           localStorage.setItem('user', JSON.stringify(mergedUser));
+          
+          // [FIXED] Smart navigation based on user status
+          if (isOnboardingComplete && hasCarbonData) {
+            console.log('[LOGIN] Returning user → Dashboard');
+            navigate('/dashboard');
+          } else {
+            console.log('[LOGIN] New user → Onboarding');
+            navigate('/onboarding');
+          }
+          
         } else {
+          // Backend error but login succeeded locally
           setUser(userData);
           setEcoPoints(0);
+          navigate('/onboarding');
         }
       } catch (apiErr) {
         console.error('Backend login error:', apiErr);
-        // Still allow login even if backend fails
+        // Allow local login even if backend fails
         setUser(userData);
         setEcoPoints(0);
+        navigate('/onboarding');
       }
       
-      navigate('/onboarding');
     } catch (err) {
       console.error('Google decode error:', err);
       alert('Login failed. Please try again.');
