@@ -43,7 +43,7 @@ export default function Leaderboard() {
     setLoading(true)
     setError(null)
     try {
-      const res = await api.get('/leaderboard')
+      const res = await api.get('/api/leaderboard')
       if (res.data?.success) {
         // Add rank numbers from server sort order
         const ranked = (res.data.leaderboard || []).map((entry, index) => ({
@@ -123,9 +123,9 @@ export default function Leaderboard() {
     const indiaAgeAvg = CARBON_BENCHMARKS.india.byAgeGroup[ageGroup] || 220
     const diff = userTotal - indiaAgeAvg
     if (diff <= 0) {
-      return `Great job! Your carbon footprint is ${Math.abs(diff)} kg lower than the average for your age group in India.`
+      return `Great job! Your carbon footprint is ${Math.abs(Math.round(diff * 10) / 10)} kg lower than the average for your age group in India.`
     } else {
-      return `Your carbon footprint is ${diff} kg higher than the average for your age group in India. Try the challenges to reduce it!`
+      return `Your carbon footprint is ${Math.round(diff * 10) / 10} kg higher than the average for your age group in India. Try the challenges to reduce it!`
     }
   }
 
