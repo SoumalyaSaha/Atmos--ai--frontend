@@ -2,7 +2,7 @@ import { useState, useEffect, useContext } from 'react'
 import { motion } from 'framer-motion'
 import { 
   User, Award, Settings, Bell, Moon, Sun, LogOut, Shield,
-  Leaf, TrendingUp, Calendar, Zap, Pencil, Target, CheckCircle, Flame
+  Leaf, TrendingUp, Calendar, Zap, Pencil, Target, CheckCircle, Flame, ArrowRight
 } from 'lucide-react'
 import { AppContext } from '../App'
 import api from '../utils/api'
@@ -43,7 +43,7 @@ export default function Profile() {
 
   const fetchProfile = async () => {
     try {
-      const res = await api.get('/user/profile')
+      const res = await api.get('/api/user/profile')
       setProfile(res.data.profile)
     } catch (error) {
       console.error('Error fetching profile:', error)
@@ -54,14 +54,14 @@ export default function Profile() {
 
   const fetchActiveChallenges = async () => {
     try {
-      const res = await api.get('/challenges/active')
+      const res = await api.get('/api/challenges/active')
       if (res.data?.success) setActiveChallenges(res.data.activeChallenges || [])
     } catch (err) { console.error('Error fetching active challenges:', err) }
   }
 
   const fetchCompletedChallenges = async () => {
     try {
-      const res = await api.get('/challenges/completed')
+      const res = await api.get('/api/challenges/completed')
       if (res.data?.success) setCompletedChallenges(res.data.challengesCompleted || [])
     } catch (err) { console.error('Error fetching completed challenges:', err) }
   }
@@ -71,7 +71,7 @@ export default function Profile() {
     const updatedProfile = { ...profile, displayName: nameToSave, name: nameToSave }
     setProfile(updatedProfile)
     if (setUser) setUser(prev => ({ ...prev, displayName: nameToSave, name: nameToSave }))
-    try { await api.patch('/user/profile', { name: nameToSave, displayName: nameToSave }) } 
+    try { await api.patch('/api/user/profile', { name: nameToSave, displayName: nameToSave }) } 
     catch (e) { console.error('Failed to update name:', e) }
     setIsEditingName(false)
   }
@@ -154,6 +154,17 @@ export default function Profile() {
           <div className="text-center px-4 py-2 bg-gray-200/40 dark:bg-gray-800/40 rounded-xl">
             <p className="text-lg font-bold text-amber-500 dark:text-amber-400">{profile?.badges?.length ?? 0}</p>
             <p className="text-xs text-gray-500 dark:text-gray-500">Badges</p>
+          </div>
+        </div>
+
+        {/* NEW: Earn Eco Points Message */}
+        <div className="mt-4 p-3 bg-gradient-to-r from-emerald-900/20 to-cyan-900/20 rounded-xl border border-emerald-800/30">
+          <div className="flex items-center justify-center gap-2 text-sm">
+            <Zap className="w-4 h-4 text-amber-400" />
+            <span className="text-gray-300">
+              Complete challenges to earn <span className="text-amber-400 font-semibold">Eco Points</span> and level up!
+            </span>
+            <ArrowRight className="w-3 h-3 text-emerald-400" />
           </div>
         </div>
       </motion.div>
