@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react'
+import { useState, useEffect, useContext, useRef } from 'react' // CHANGED: added useRef
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
@@ -24,6 +24,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const dataLoaded = useRef(false) // CHANGED: added guard flag
 
   useEffect(() => {
     if (!user?.onboardingComplete) {
@@ -31,26 +32,29 @@ export default function Dashboard() {
     }
   }, [user, navigate])
 
-  // Load data - prefer cached data, minimal API calls
+  // CHANGED: dependency [user] → [user?.onboardingComplete]
+  // Only runs when onboardingComplete flips, not on every user field change
   useEffect(() => {
-    if (user?.onboardingComplete) {
+    if (user?.onboardingComplete && !dataLoaded.current) { // CHANGED: added !dataLoaded.current check
       loadDashboardData()
     }
-  }, [user])
+  }, [user?.onboardingComplete])
 
   const loadDashboardData = async () => {
+    // CHANGED: moved cache check BEFORE setLoading(true)
+    // If cached data exists, skip loading spinner entirely — no flicker
+    if (user?.dashboardCache?.breakdown && user?.carbonFootprint?.lastCalculated) {
+      console.log('[DASHBOARD] Using cached data - 0 API calls')
+      dataLoaded.current = true // CHANGED: mark as loaded
+      setLoading(false)
+      return
+    }
+
+    // CHANGED: setLoading(true) only runs for actual API calls
     setLoading(true)
     setError(null)
 
     try {
-      // If we have cached dashboard data in user context, use it immediately
-      if (user?.dashboardCache?.breakdown && user?.carbonFootprint?.lastCalculated) {
-        console.log('[DASHBOARD] Using cached data - 0 API calls')
-        setLoading(false)
-        return
-      }
-
-      // Otherwise fetch from backend (should have cache there too)
       console.log('[DASHBOARD] Fetching from backend...')
       const res = await api.get('/api/user/profile')
 
@@ -61,6 +65,7 @@ export default function Dashboard() {
           localStorage.setItem('user', JSON.stringify(updated))
           return updated
         })
+        dataLoaded.current = true // CHANGED: mark as loaded after fetch
       }
     } catch (err) {
       console.error('Dashboard load error:', err)
@@ -68,6 +73,12 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // CHANGED: manual refresh resets the guard flag so it can load again
+  const handleRefresh = () => {
+    dataLoaded.current = false
+    loadDashboardData()
   }
 
   // Generate insights locally if none cached
@@ -158,7 +169,7 @@ export default function Dashboard() {
         </div>
         <div className="hidden md:flex items-center gap-3">
           <button 
-            onClick={loadDashboardData}
+            onClick={handleRefresh} // CHANGED: uses safe refresh handler
             className="flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-lg border border-slate-700 hover:border-emerald-500/50 text-gray-400 hover:text-emerald-400 transition-all"
           >
             <RefreshCw className="w-4 h-4" />
