@@ -148,7 +148,7 @@
 | **Charts** | Chart.js |
 | **Icons** | Lucide React |
 | **Animations** | Framer Motion |
-| **Deployment** | Vercel (Frontend) + Render/Railway (Backend) |
+| **Deployment** | Vercel (Frontend) + Railway (Backend) |
 | **State Management** | React Context API + useReducer |
 
 ---
